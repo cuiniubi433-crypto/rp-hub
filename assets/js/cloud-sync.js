@@ -1379,8 +1379,9 @@
         if (response.status === 401) {
             const sent = String(state.tokenInput || loadConfig()?.token || '').trim();
             if (!sent) throw new Error('还没有填写 GitHub Token：请在令牌框里粘贴 ghp_ 开头的整串（40 位）');
-            if (sent.length !== 40 && sent.startsWith('ghp_')) throw new Error('Token 长度不对（'+sent.length+' 位，应为 40 位），复制时可能少了几位');
-            throw new Error('GitHub Token 无效或已过期，请重新填写');
+            const mark = sent.length > 12 ? `${sent.slice(0, 7)}…${sent.slice(-4)}` : sent;
+            if (sent.length !== 40 && sent.startsWith('ghp_')) throw new Error(`Token 长度不对：收到 ${sent.length} 位（${mark}），正品应为 40 位，复制时少了几位`);
+            throw new Error(`GitHub 拒绝了这串 Token：收到 ${sent.length} 位 ${mark}。请确认它没被删除、没过期，且是「经典令牌」并勾了 gist`);
         }
         if (response.status === 403) throw new Error('GitHub 拒绝访问（可能是 Token 权限不足或触发限流）');
         if (response.status === 404) throw new Error('找不到对应的同步库，请检查同步码');
