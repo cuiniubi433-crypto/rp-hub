@@ -1376,7 +1376,12 @@
         if (response.ok) return response;
         let detail = '';
         try { detail = JSON.parse(await response.text()).message; } catch (_) { /* 非 JSON */ }
-        if (response.status === 401) throw new Error('GitHub Token 无效或已过期，请重新填写');
+        if (response.status === 401) {
+            const sent = String(state.tokenInput || loadConfig()?.token || '').trim();
+            if (!sent) throw new Error('还没有填写 GitHub Token：请在令牌框里粘贴 ghp_ 开头的整串（40 位）');
+            if (sent.length !== 40 && sent.startsWith('ghp_')) throw new Error('Token 长度不对（'+sent.length+' 位，应为 40 位），复制时可能少了几位');
+            throw new Error('GitHub Token 无效或已过期，请重新填写');
+        }
         if (response.status === 403) throw new Error('GitHub 拒绝访问（可能是 Token 权限不足或触发限流）');
         if (response.status === 404) throw new Error('找不到对应的同步库，请检查同步码');
         throw new Error(`GitHub 返回错误（${response.status}）${detail ? '：' + detail : ''}`);
@@ -1463,6 +1468,7 @@
     let overwriteApproved = false;
 
     const gistEnable = async () => {
+        const hadConfigBefore = !!loadConfig()?.gistId;
         const token = state.tokenInput.trim();
         const password = state.passwordInput;
         if (!token) { setMessage('error', '请填写 GitHub Token'); return; }
@@ -1508,8 +1514,11 @@
             state.providerTab = 'gist';
             setMessage('success', `GitHub 通道已开启，同步码 ${code}。在其它设备上用它即可拉取。`);
         } catch (error) {
-            localStorage.removeItem(CONFIG_KEY);
-            applyConfig(null);
+            // 只在本次是「首次开启」时回滚；已有配置不能被一次失败抹掉
+            if (!hadConfigBefore) {
+                localStorage.removeItem(CONFIG_KEY);
+                applyConfig(null);
+            }
             setMessage('error', error.message);
         }
     };
