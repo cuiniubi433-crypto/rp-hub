@@ -1358,6 +1358,9 @@
     };
 
     // ══════════════════ GitHub Gist ══════════════════
+    // 手机复制令牌时常混进零宽空格之类看不见的字符，.trim() 不会去掉它们，
+    // GitHub 收到就回 401，而界面上显示的还是「干干净净的 40 位」。这里按白名单洗一遍。
+    const cleanToken = (value) => String(value || '').replace(/[^A-Za-z0-9_]/g, '');
     const ghRequest = async (path, options = {}) => {
         let response;
         try {
@@ -1365,7 +1368,7 @@
                 cache: 'no-store',
                 headers: {
                     Accept: 'application/vnd.github+json',
-                    Authorization: `Bearer ${state.tokenInput || loadConfig()?.token || ''}`,
+                    Authorization: `Bearer ${cleanToken(state.tokenInput || loadConfig()?.token || '')}`,
                     ...(options.headers || {})
                 },
                 ...options
@@ -1470,7 +1473,7 @@
 
     const gistEnable = async () => {
         const hadConfigBefore = !!loadConfig()?.gistId;
-        const token = state.tokenInput.trim();
+        const token = cleanToken(state.tokenInput);
         const password = state.passwordInput;
         if (!token) { setMessage('error', '请填写 GitHub Token'); return; }
         if (password.length < 6) { setMessage('error', '同步密码至少 6 位'); return; }
@@ -1608,7 +1611,7 @@
     });
 
     const gistBindByCode = async () => {
-        const token = state.tokenInput.trim();
+        const token = cleanToken(state.tokenInput);
         const code = state.codeInput.trim().toLowerCase();
         if (!token) { setMessage('error', '请填写 GitHub Token'); return; }
         if (!/^[0-9a-z]{6}$/.test(code)) { setMessage('error', '同步码必须是 6 位字母或数字'); return; }
